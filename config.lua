@@ -3,7 +3,7 @@ application = {
 		width = 400,
 		height = 600, 
 		--scale = "zoomEven",
-		fps = 30,
+		fps = 60,
                 
 		
 		--[[

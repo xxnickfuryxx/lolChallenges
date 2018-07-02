@@ -22,9 +22,11 @@ local progressView
 function scene:createScene( event )
 	local screenGroup = self.view
 
-	text1 = display.newText( screenGroup, "A", display.contentCenterX-10, display.contentCenterY-80, "ZOMBIE", 40 )
-	text2 = display.newText( screenGroup, "xxnickfuryxx", display.contentCenterX/2, display.contentCenterY-50, "ZOMBIE", 40 )
-	text3 = display.newText( screenGroup, "production", display.contentCenterX-85, display.contentCenterY-20, "ZOMBIE", 40 )
+	storyboard.removeAll()
+
+	text1 = display.newText( screenGroup, "A", display.contentCenterX-10, display.contentCenterY-80, "fonts/zombie.ttf", 40 )
+	text2 = display.newText( screenGroup, "xxnickfuryxx", display.contentCenterX/3, display.contentCenterY-50, "fonts/zombie.ttf", 40 )
+	text3 = display.newText( screenGroup, "production", display.contentCenterX-100, display.contentCenterY-20, "fonts/zombie.ttf", 40 )
 
 	progressView = widget.newProgressView
 					{
@@ -50,7 +52,7 @@ function scene:createScene( event )
 		if x < 0.0099999999999992 then
 			-- local image = display.newImage( screenGroup, "Icon-xxxhdpi.png", display.contentWidth/3, (display.contentHeight/3) -50 )
 			local progress = 0
-			progressView.isVisible = true
+			progressView.isVisible = false
 
 			function progressBar()
 				progress = progress + 0.1
@@ -63,7 +65,7 @@ function scene:createScene( event )
 			end
 
 			display.setDefault( "background", 0, 0, 0 )
-			timer.performWithDelay( 100, progressBar, 10 )
+			timer.performWithDelay( 1, progressBar, 10 )
 
 		end
 

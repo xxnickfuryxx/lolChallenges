@@ -9,7 +9,9 @@ local globals = require( "globals" )
 local widget = require( "widget" )
 local storyboard = require( "storyboard" )
 local services = require( "services" )
-local startapp = require( "plugin.startapp" )
+-- local startapp = require( "plugin.startapp" )
+local inMobi = require( "plugin.inMobi" )
+local translations = require( "translations" )
 
 local scene = storyboard.newScene()
 
@@ -18,6 +20,7 @@ storyboard.removeAll()
 display.setDefault( "anchorX", 0.0 )    -- default to TopLeft anchor point for new objects
 display.setDefault( "anchorY", 0.0 )
 
+local language = system.getPreference( "locale", "language" ) 
 
 ---------------------------------------------------------------------------------
 -- BEGINNING OF YOUR IMPLEMENTATION
@@ -30,6 +33,7 @@ local group
 
 function scene:createScene( event )
 	local screenGroup = self.view
+	widget.setTheme( "widget_theme_ios7" )
 
 	services:setServerService()
 
@@ -46,57 +50,94 @@ function scene:createScene( event )
 	group.isVisible = true
 
 	local dialogLogin = display.newImage("images/login.png", 25, 30)
-	dialogLogin:scale( 0.8, 0.7 )
+	dialogLogin:scale( 0.8, 0.8 )
 	group:insert( dialogLogin, false )
 
-	local text = "LOL CHALLENGES\n\nisn't endorsed by Riot Games and\n"..
-				"doesn't reflect the views or opinions\n"..
-				"of Riot Games or anyone officially\n".. 
-				"involved in producing or managing \n"..
-				"League of Legends.\n\nLeague of Legends\n"..
-				"and Riot Games are trademarks \nor registered\n"..
-				"trademarks of Riot Games, Inc."
 
-	local textResume = display.newText(text, xCenter-100, yCenter-195)							
+	local screenPercent = display.pixelWidth/display.pixelHeight
+	local labelSize = 0
+	if screenPercent >= 0.75 then
+		labelSize = 12
+	else
+		labelSize = 16
+	end
+
+	local text = translations["login.intro"][language]
+
+	local textResume = display.newText(text, xCenter-100, yCenter-192)							
 	textResume:setFillColor(0.2)
-	textResume.size = 14
+	textResume.size = labelSize
 	group:insert( textResume, false )
 
-	local textSummoner = display.newText("Summoner", xCenter-100, yCenter-20)
+	function counterButtonEvent(event)
+		if  "ended" == event.phase then
+			storyboard.removeAll()
+			storyboard.gotoScene("composition")
+			transition.to( group, { time=1500,  y=-600, iterations=1, transition=easing.inOutElastic, onComplete= function() group.isVisible = false end} )
+		end
+	end
+
+	btnComposition = widget.newButton(   
+		{
+	        label = translations["login.composition"][language],
+	        emboss = false,
+	        width = 200,
+	        height = 30,
+	        x = xCenter - 100,
+	        y = yCenter + 35,
+	        defaultFile = "images/button_1.png",
+	        fontSize = 12,
+	     	labelColor = { default={1,1,1} },
+	     	onEvent = counterButtonEvent
+	    }
+	   
+	)
+	
+	group:insert( btnComposition, false )
+
+	local textSummoner = display.newText(translations["login.summoner"][language], xCenter-100, yCenter+68, native.systemFontBold  )
 	textSummoner:setFillColor(0.5)
 	textSummoner.size = 16
 	group:insert( textSummoner, false )
 	
-	local rectange = display.newRect( xCenter-100, yCenter, 200, 30 )
+	local rectange = display.newRect( xCenter-100, yCenter+90, 200, 30 )
 	rectange.strokeWidth = 2
 	rectange:setFillColor( 1,1,1 )
 	rectange:setStrokeColor( 0, 0, 0 )
 	group:insert( rectange, false )
 
-	local txtSummoner = native.newTextField( xCenter-100, yCenter, 200, 30 )
+	local txtSummoner = native.newTextField( xCenter-100, yCenter+90, 200, 30 )
 	txtSummoner.align = "center"
 	txtSummoner.hasBackground = false
 	--txtSummoner.text = "RiotSchmick"
+	txtSummoner:setReturnKey("done")
 	group:insert( txtSummoner, false )
-
-	native.setKeyboardFocus(txtSummoner)
+	
+	local function textListenerEvent(event)
+		if event.phase == "began" then
+			group.y = group.y - 100
+		elseif event.phase == "ended" then
+			group.y = group.y + 100
+		end
+	end
+	txtSummoner:addEventListener( "userInput", textListenerEvent )
 
 	local function onClickTextServer (event) 
 		if event.phase == "ended" then
-			group.y = -1000
-			globals:dialogServers(services, btnServer)
+			transition.to( group, { time=750, y=-600, iterations=1, transition=easing.inOutElastic } )
+			globals:dialogServers(services, btnServer, group)
 		end
 	end
 
 	if services.serverName == nil then
 		btnServer = widget.newButton(   
 			{
-		        label = "SERVER",
+		        label = translations["login.server"][language],
 		        emboss = false,
 		        width = 200,
 		        height = 30,
-		        x = xCenter-100,
-		        y = yCenter+40,
+		        x = xCenter - 100,
+		        y = yCenter + 130,
 		        defaultFile = "images/button_1.png",
 		        fontSize = 12,
 		     	labelColor = { default={1,1,1} },
@@ -111,7 +152,7 @@ function scene:createScene( event )
 		        width = 200,
 		        height = 30,
 		        x = xCenter-100,
-		        y = yCenter+40,
+		        y = yCenter + 130,
 		        defaultFile = "images/button_1.png",
 		        fontSize = 12,
 		     	labelColor = { default={1,1,1} },
@@ -130,10 +171,10 @@ function scene:createScene( event )
 	        if (txtSummoner.text ~= nil and txtSummoner.text ~= "" and btnServer.label ~= "SERVER" and services.url ~= nil) then
 
 	        	native.setKeyboardFocus( nil )
-
-	        	group.isVisible = false
+	        	transition.to( group, { time=750, y=-600, iterations=1, transition=easing.inOutElastic, onComplete=function() group.isVisible = false end } )
+	        	
 				txtSummoner.isVisible = false
-				globals:showDialog(txtSummoner.text.."\n\nWait, search your summoner...", false)
+				globals:showDialog(txtSummoner.text..(translations["login.wait"][language]), false)
 				backgroungLogin.fill.effect = "filter.blurGaussian"
  
 				backgroungLogin.fill.effect.horizontal.blurSize = 20
@@ -144,30 +185,48 @@ function scene:createScene( event )
 				services:callService(services.summonerByName..txtSummoner.text, "game")
 
 			else
-				group.y = -1000
-				globals:showDialogError("Please, enter the summoner\n and select server to connect.", true)
+				transition.to( group, { time=750, y=-600, iterations=1, transition=easing.inOutElastic } )
+				globals:showDialogError(translations["login.erro.connect"][language], true)
 			end
 	    end
 	end
 
 	btnEntrar = widget.newButton(   
 		{
-	        label = "SEARCH",
+	        label = translations["login.search"][language],
 	        emboss = false,
 	        width = 200,
 	        height = 30,
 	        x = xCenter - 100,
-	        y = yCenter + 80,
+	        y = yCenter + 170,
 	        defaultFile = "images/button_1.png",
 	        fontSize = 12,
 	     	labelColor = { default={1,1,1} },
 	     	onEvent = handleButtonEvent
 	    }
+	   
 	)
 	
 	group:insert( btnEntrar, false )
-	group.x = 1000
-	transition.moveTo( group, {x=0, time=1000 } )
+
+
+
+
+	group.y = -600
+
+	local function textListener( event )
+ 
+	    if ( event.phase == "ended" or event.phase == "submitted" ) then
+	        native.setKeyboardFocus(nil)
+	    end
+
+	end
+	txtSummoner:addEventListener( "userInput", textListener )
+	transition.to( group, { time=2000, y=display.contentCenterY-300, iterations=1, transition=easing.inOutElastic } )
+
+
+
+
 
 	-- StartApp listener function
 	-- local function adListener( event )
@@ -178,19 +237,48 @@ function scene:createScene( event )
 	--     end
 	-- end
  
-	-- -- Initialize the StartApp plugin
-	-- startapp.init( adListener, { appId="112074675" } )
-
-	-- -- Show banner ad. no need to pre-load banner
+	-- startapp.init( adListener, { appId="202880689" } )
 	-- startapp.show( "banner" , {adTag = "LOL Challenges bottom banner",
 	-- 							yAlign = "bottom",
 	-- 							bannerType = "standard" })
+
+
+
+
+	-- INMOD 
+	local placementID
+	if system.getInfo( "manufacturer" ) ==  "Apple" then
+		placementID = "1531137747747" --ios
+	else
+		placementID = "1531510351639" --android
+	end
+
+	local function adListener( event )
+	    if ( event.phase == "init" ) then  -- Successful initialization
+	        inMobi.load( "banner", placementID )
+
+	    elseif ( event.phase == "failed" ) then  -- The ad failed to load
+	        print( event.type )
+	        print( event.placementId )
+	        print( event.isError )
+	        print( event.response )
+
+	        native.showAlert( "Error", event.response, {"OK"} )
+    
+	    end
+	end
+	-- Initialize the InMobi plugin
+	inMobi.init( adListener, { accountId="4719d581ff664522ab7a9842dcd89866", hasUserConsent=true } )
+	inMobi.show( placementID, { yAlign="bottom" } )
 
 	
 end
 -- Called immediately after scene has moved onscreen:
 function scene:enterScene( event )
 	local group = self.view	
+
+	
+
 end
 
 -- Called when scene is about to move offscreen:
@@ -201,7 +289,7 @@ function scene:exitScene( event )
 end
 -- Called prior to the removal of scene's "view" (display group)
 function scene:destroyScene( event )
-	print("destroiu")
+
 	local group = self.view
 
 end

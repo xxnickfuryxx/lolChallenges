@@ -10,6 +10,7 @@ local widget = require( "widget" )
 local storyboard = require( "storyboard" )
 local services = require("services")
 local json = require ( "json" )
+local translations = require("translations")
 local scene = storyboard.newScene()
 
 storyboard.removeAll()
@@ -40,32 +41,42 @@ local left = 10
 local left2 = 10
 local left3 = 10
 
+local language = system.getPreference( "locale", "language" ) 
+
 -- Called when the scene's view does not exist:
 function scene:createScene( event )
 	local screenGroup = self.view
 
-	local background = display.newImage( screenGroup, "images/back_detail.png" , 0, 0 ) 
-	background:scale( 0.93, 1.0 )
+
+
 
 end
 -- Called immediately after scene has moved onscreen:
 function scene:enterScene( event )
 	local screenGroup = self.view	
 	
+	screenGroup.x = -500
+	transition.to( screenGroup, { time=2000, x=0, iterations=1, transition=easing.inOutElastic } )
 	
+	local background = display.newImage( screenGroup, "images/back_detail.png" , 0, 0 ) 
+	background:scale( 0.93, 1.0 )
+
 	summoner = services.jsonReturned
 
 	scrollView = widget.newScrollView
 	{
-		top = yCenter-180,
-    	left = 20,
+		top = yCenter-160,
+    	left = -500,
 	    width = 350,
 	    height = 350,
 	    --scrollWidth = 0,
 	    --scrollHeight = 50,
 	    hideBackground = true,
+	    horizontalScrollDisabled = true,
 	    listener = scrollListener
 	}
+
+	transition.to( scrollView, { time=2000, x=20, iterations=1, transition=easing.inOutElastic } )
 
 	function networkListener(event)
 		if event.isError then
@@ -73,23 +84,22 @@ function scene:enterScene( event )
         	globals:removeDialog()
 			timer.performWithDelay( 1000, 	
 				function() 
-					globals:showDialog("The Internet connection\nappears to be offline.", true) 
+					globals:showDialog(translations["error.notconnected"][language], true) 
 				end)
         
         elseif event.phase == "began" then
 
         elseif event.phase == "ended" then
-			
-        	globals:removeDialog()     	
+			  	
         	local decoded, pos, msg = json.decode( event.response )
 
 			if not decoded then
-				globals:showDialog("Decode failed at "..tostring(pos)..": "..tostring(msg) , false)
+				--globals:showDialog("Decode failed at "..tostring(pos)..": "..tostring(msg) , false)
 			else
 				if decoded.status ~= nil then
+					globals:removeDialog()
 					if decoded.status.status_code == 403 then
-
-						local msg = "Problem to data access.\nTry again later222. (Error "..decoded.status.status_code..")"
+						local msg = translations["error.dataaccess"][language].." (Error "..decoded.status.status_code..")"
 						timer.performWithDelay( 1000, 
 						function() 
 							erroDialog(msg) 
@@ -97,11 +107,20 @@ function scene:enterScene( event )
 
 					elseif decoded.status.status_code == 404 then
 
-						local msg = "This summoner not in game.\nWant to see more information\nabout '"..summoner.name.."'?"
+						local msg = translations["error.summoner"][language]..summoner.name.."?"
 						timer.performWithDelay( 1000, 
 						function() 
 							globals:showDialogError(msg, true, "dashboard") 
 						end)
+
+					elseif decoded.status.status_code == 503 then
+						globals:removeDialog()
+						local msg = translations["error.unavaliable"][language]
+						timer.performWithDelay( 1000, 
+						function() 
+							erroDialog(msg) 
+						end)
+
 					end
 				else
 					
@@ -115,75 +134,53 @@ function scene:enterScene( event )
 
 	network.request(services.url..services.activeGame..summoner.id..services.key, "GET", networkListener, params)
 
+
+	
+
 	function init()
 
 		local participants = jsonReturned.participants
 
 		for k, v in pairs( participants ) do
 		    local participant  = v
-
-		    function networkListenerRank(event)
-				if event.isError then
-	        
-		        elseif event.phase == "began" then
-
-	        	elseif event.phase == "ended" then
-	        		local positions, pos, msg = json.decode( event.response )
-
-	        		if positions.status == nil then
-
-	        			if r == 6 then
-							j = 1
-						end  
-
-						if (r / 5 < 1) then
-							left2 = 10
-						elseif (r / 5 > 1) then
-							left2 = 180
-						end
-
-						j = j + 2
-						for k,v in pairs( positions ) do
-	        				local position = v
-	        					rankData(position)
-	        				break
-	        			end
-						
-						j = j + 4
-						r = r + 1
-	        		
-	        		end
-			   
-	    		end
-	    	end
-			network.request(services.url..services.positions..participant.summonerId..services.key, "GET", networkListenerRank, params)	
+			
 			paticipantData(participant)
 			imageData(participant)
  
 		end
 
-		local title = display.newText( screenGroup, "In Game...", xCenter-50, 30, native.systemFontBold, 24 )
+		local title = display.newText( screenGroup, translations["game.ingame"][language], xCenter-50, 30, "fonts/zombie.ttf", 24 )
 		title:setFillColor(0,0,0)
 
-		local info = display.newText( screenGroup, "...for more information, touch player", 50, 60, native.systemFont, 18 )
+		local info = display.newText( screenGroup, translations["game.forinfomation"][language], 50, 60, native.systemFont, 18 )
 		info:setFillColor(0,0,0)
 
-		local teamBlue = display.newText( screenGroup, "Team Blue", 40, 100, native.systemFontBold, 20 )
+		local gameType = services:getGameQueue(jsonReturned.gameQueueConfigId)
+		local gameMode = display.newText( screenGroup, gameType, 120, 90, "fonts/zombie.ttf", 18 )
+		gameMode:setFillColor(0,0,0)
+
+		local teamBlue = display.newText( screenGroup, translations["game.teamblue"][language], 40, 120, "fonts/zombie.ttf", 20 )
 		teamBlue:setFillColor(41/255,128/255,185/255)
 
-		local teamRed = display.newText( screenGroup, "Team Red", xCenter+10, 100, native.systemFontBold, 20 )
+		local teamRed = display.newText( screenGroup, translations["game.teamred"][language], xCenter+10, 120, "fonts/zombie.ttf", 20 )
 		teamRed:setFillColor(231/255,76/255,60/255)
 
 		local function onClickBack(event)
 
-			scrollView.isVisible = false
-			storyboard.gotoScene("login", "fade", 250)
-			storyboard.removeAll()
+			transition.to( screenGroup, { time=1000, x=500, iterations=1, transition=easing.inOutElastic, onComplete = function() 
+																															storyboard.gotoScene("login", "fade", 250)
+																															storyboard.removeAll()
+																														end } )
+			transition.to( scrollView, { time=1000, x=500, iterations=1, transition=easing.inOutElastic, onComplete = 	function() 
+																															scrollView.isVisible = false 
+																														end } )
+
+
 		end
 
 		local btnBack = widget.newButton(
 			{
-		        label = "BACK",
+		        label = translations["game.back"][language],
 		        emboss = false,
 		        width = 100,
 		        height = 30,
@@ -216,12 +213,24 @@ function scene:enterScene( event )
 		end
 
 		local function detailsSummonerListener(event)
-			services.screenBack = "game"
-			services:callService(services.summonerByName..participant.summonerName, "dashboard")
-			scrollView.isVisible = false
+
+			transition.to( screenGroup, { time=1000, x=500, iterations=1, transition=easing.inOutElastic, onComplete = 
+				function() 
+					services.screenBack = "game"
+					services:callService(services.summonerByName..string.gsub(participant.summonerName, " ", "%%20"), "dashboard")
+				end } )
+			transition.to( scrollView, { time=1000, x=500, iterations=1, transition=easing.inOutElastic, onComplete = 	function() 
+																															scrollView.isVisible = false 
+																														end } )
+
+
 		end
 
-		local summonerName = display.newText( screenGroup, participant.summonerName, left+40, (i*10)+20, native.systemFontBold, 15 )	
+
+		local leftPosition = left+40
+		local topPosition = (i*10)+20
+
+		local summonerName = display.newText( screenGroup, participant.summonerName, leftPosition, topPosition, "fonts/zombie.ttf", 16 )	
 		summonerName:addEventListener( "tap", detailsSummonerListener )
 
 		if (q / 5 < 1) then
@@ -238,21 +247,77 @@ function scene:enterScene( event )
 		q = q + 1
 		scrollView:insert( summonerName )
 
+		rankData(participant, leftPosition, topPosition)
+
 
 	end
 
-	function rankData(position)
+	function rankData(participant, leftPosition, topPosition)
 
-		if position ~= nil then
-			local rank = display.newText( screenGroup, position.tier.." "..position.rank, left2+40, (j*10)+20, native.systemFont, 16 )
-			rank:setFillColor( 0, 0, 0 )
-			scrollView:insert( rank )
+
+		function networkListenerRank(event) 
+			
+			if event.phase == "ended" then
+
+				local positions, pos, msg = json.decode( event.response )
+				local isFound = false
+
+	    		if positions.status == nil then
+
+					for k,v in pairs( positions ) do
+						--sleep(1)
+	    				local position = v
+						local gameType = services:getGameQueue(jsonReturned.gameQueueConfigId)
+						local positionQueueType = services:getGameQueue(position.queueType)
+
+	    				if positionQueueType == gameType then
+	    					isFound = true
+	    					if position ~= nil then
+
+	    						print( "images/tier-icons/"..string.lower( position.tier.."_"..position.rank ) ..".png" )
+
+								local tierImage = display.newImage( screenGroup, "images/tier-icons/"..string.lower( position.tier.."_"..position.rank ) ..".png", leftPosition, topPosition+10 )
+								tierImage:scale( 0.25, 0.2 )
+								local rank = display.newText( screenGroup, position.tier.." "..position.rank, leftPosition+50, topPosition+20, native.systemFont, 13 )
+								rank:setFillColor( 0, 0, 0 )
+								scrollView:insert( tierImage )
+								scrollView:insert( rank )
+
+							else
+								isFound = false
+							end
+
+	    					break
+	    				end
+	    			end
+
+	    			if isFound == false then
+			    		local rank = display.newText( screenGroup, "UNRANKED", leftPosition+10, topPosition+20, native.systemFont, 13 )
+						rank:setFillColor( 0, 0, 0 )
+						scrollView:insert( rank )
+	    			end
+	    		
+	    		end
+
+			end
 		end
 		
+		network.request(services.url..services.positions..participant.summonerId..services.key, "GET", networkListenerRank, params)	
 
 	end
 
 	function imageData(participant)
+
+		local function detailsSummonerListener(event)
+			transition.to( screenGroup, { time=1000, x=500, iterations=1, transition=easing.inOutElastic, onComplete = 
+				function() 
+					services.screenBack = "game"
+					services:callService(services.summonerByName..string.gsub(participant.summonerName, " ", "%%20"), "dashboard")
+				end } )
+			transition.to( scrollView, { time=1000, x=500, iterations=1, transition=easing.inOutElastic, onComplete = 	function() 
+																															scrollView.isVisible = false 
+																														end } )
+		end
 
 		if s == 6 then
 			k = 1
@@ -266,6 +331,14 @@ function scene:enterScene( event )
 
 		k = k + 2
 		local circle = display.newCircle( screenGroup, left3, (k*10), 10 )
+		local paint = {
+		    type = "image",
+		    filename = "images/icons/interrogation.png"
+		}
+		circle.fill = paint	
+		-- circle.width = 40
+		-- circle.height = 35
+		circle:addEventListener( "tap", detailsSummonerListener )
 		--circle:setFillColor(241/255, 229/255, 186/255)
 		k = k + 4
 
@@ -278,32 +351,23 @@ function scene:enterScene( event )
 		local function networkListenerImage( event )
 		  if event.isError then
 		        print ( "Network error - download failed" )
-		  else
+		  elseif(event.phase == "ended") then
+		  		globals:removeDialog()
 		    	if event.response.fullPath ~= nil then
-		    		local imgtmp = event.response.fullPath
-				
-					if system.getInfo( "environment" ) ~= "simulator" then
-						local paint = {
-						    type = "image",
-						    filename = imgtmp
-						}
-						circle.fill = paint	
-						circle.width = 40
-						circle.height = 35
-					else
-						local paint = {
-						    type = "image",
-						    filename = "images/interrogation.png"
-						}
-						circle.fill = paint	
-						circle.width = 40
-						circle.height = 35
-					end
+		    	
+					local paint = {
+					    type = "image",
+					    filename = imageTemp,
+					    baseDir = system.TemporaryDirectory
+					}
+					circle.fill = paint	
+					circle.width = 40
+					circle.height = 35
 				else
 
 					local paint = {
 					    type = "image",
-					    filename = "images/interrogation.png"
+					    filename = "images/icons/interrogation.png"
 					}
 					circle.fill = paint	
 					circle.width = 40
@@ -312,12 +376,30 @@ function scene:enterScene( event )
 		    	end 
 		    end
 		end
+	
+		local function downloadPhoto()
+
+			local photoLink =  services.championImageLocal..participant.championId..".png"
+			local params = {}
+			params.progress = "download"
+			params.response = {
+				filename = imageTemp,
+		  		baseDirectory = system.TemporaryDirectory
+			}
+			network.request( photoLink, "GET", networkListenerImage,  params )
+		end
 		
-		display.loadRemoteImage( "http://ddragon.leagueoflegends.com/cdn/6.24.1/img/profileicon/"..participant.profileIconId..".png", "GET", networkListenerImage, imageTemp, system.TemporaryDirectory,-500, -500 )
-		
+		downloadPhoto()
 
 	end
 
+	local clock = os.clock
+	function sleep(n)  -- seconds
+		local t0 = clock()
+		while clock() - t0 <= n do end
+	end
+
+	globals:showDialog(translations["game.wait"][language], false)
 
 end
 
